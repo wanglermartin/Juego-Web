@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esquiva Obstáculos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #2a2a2a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+            user-select: none;
+        }
+
+        /* Menú del juego */
+        #menu {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        #menu h1 {
+            color: #ff6f61;
+            font-size: 3rem;
+            margin-bottom: 30px;
+        }
+
+        #menu button {
+            background-color: #ff6347;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            color: white;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        #menu button:hover {
+            background-color: #ff4500;
+        }
+
+        /* Contenedor del juego */
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            border: 5px solid #ff6347;
+            background-color: #222;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        /* Jugador (circular) */
+        #player {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            background-color: #00ff00;
+            border-radius: 50%;
+            /* Cambio de forma a círculo */
+            transition: left 0.1s, bottom 0.1s;
+        }
+
+        /* Obstáculos (circulares) */
+        .obstacle {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #ff0000;
+            border-radius: 50%;
+        }
+
+        /* Efecto visual de colisión */
+        .flash {
+            animation: flashEffect 0.2s ease;
+        }
+
+        @keyframes flashEffect {
+            0% {
+                background-color: red;
+            }
+
+            100% {
+                background-color: #00ff00;
+            }
+        }
+
+        /* Texto del juego */
+        .game-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .show-text {
+            opacity: 1;
+        }
+
+        /* Estilo de puntuación */
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            /* Puntuación en el extremo derecho */
+            font-size: 1.5rem;
+        }
+
+        /* Estilo de la velocidad del juego */
+        #game-speed {
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+            font-size: 1.2rem;
+        }
+
+        /* Botones */
+        button {
+            background-color: #ff6347;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: white;
+            margin-top: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #ff4500;
+        }
+
+        /* Instrucciones */
+        #instructions {
+            display: none;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        #instructions h2 {
+            font-size: 2rem;
+        }
+
+        #instructions button {
+            background-color: #ff6347;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: white;
+            margin-top: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #instructions button:hover {
+            background-color: #ff4500;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Menú de inicio -->
+    <div id="menu">
+        <h1>Esquiva Obstáculos</h1>
+        <button onclick="startGame()">Empezar Juego</button>
+        <button onclick="showInstructions()">Instrucciones</button>
+    </div>
+
+    <!-- Contenedor del juego -->
+    <div id="game-container" style="display:none;">
+        <div id="player"></div>
+        <div id="score">Puntuación: 0</div>
+        <div id="game-speed">Velocidad: 2x</div>
+        <div class="game-text" id="game-over-text">¡GAME OVER!</div>
+        <div class="game-text" id="start-text">Presiona cualquier tecla para comenzar</div>
+        <button id="restart-button" onclick="restartGame()" style="display: none;">Reiniciar Juego</button>
+        <button id="back-to-menu" onclick="backToMenu()" style="display: none;">Volver al Menú</button>
+    </div>
+
+    <!-- Instrucciones -->
+    <div id="instructions">
+        <h2>Instrucciones</h2>
+        <p>Usa las teclas de flecha para mover el círculo verde y esquivar los obstáculos rojos.</p>
+        <p>Si chocas con un obstáculo, el juego terminará.</p>
+        <p>¡Haz que tu puntuación suba y reta tus reflejos!</p>
+        <button onclick="hideInstructions()">Volver al Menú</button>
+    </div>
+
+    <script>
+        // Variables del juego
+        const menu = document.getElementById('menu');
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const gameSpeedDisplay = document.getElementById('game-speed');
+        const gameOverText = document.getElementById('game-over-text');
+        const startText = document.getElementById('start-text');
+        const restartButton = document.getElementById('restart-button');
+        const backToMenuButton = document.getElementById('back-to-menu');
+        const instructionsContainer = document.getElementById('instructions');
+        let score = 0;
+        let gameInterval;
+        let speed = 2;
+        let obstacles = [];
+        let movingLeft = false;
+        let movingRight = false;
+        let playerX = gameContainer.offsetWidth / 2 - 25;
+        let playerY = gameContainer.offsetHeight - 70;
+        let obstacleGenerationInterval;
+
+        // Crear obstáculos
+        function createObstacles() {
+            let numObstacles = Math.floor(Math.random() * 2) + 2; // Genera entre 2 a 3 obstáculos al mismo tiempo
+            for (let i = 0; i < numObstacles; i++) {
+                const obstacle = document.createElement('div');
+                obstacle.classList.add('obstacle');
+                obstacle.style.left = Math.random() * (gameContainer.offsetWidth - 50) + 'px';
+                obstacle.style.top = -50 + 'px';
+                gameContainer.appendChild(obstacle);
+                obstacles.push(obstacle);
+            }
+        }
+
+        // Mover jugador
+        function movePlayer() {
+            if (movingLeft && playerX > 0) {
+                playerX -= 10;
+            } else if (movingRight && playerX < gameContainer.offsetWidth - 50) {
+                playerX += 10;
+            }
+            player.style.left = playerX + 'px';
+        }
+
+        // Verificar colisiones
+        function checkCollisions() {
+            obstacles.forEach(obstacle => {
+                const obstacleRect = obstacle.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+
+                if (
+                    obstacleRect.top + 50 >= playerRect.top &&
+                    obstacleRect.left + 50 >= playerRect.left &&
+                    obstacleRect.left <= playerRect.left + 50
+                ) {
+                    // Colisión detectada, ejecutar efecto visual y finalizar juego
+                    player.classList.add('flash');
+                    gameOver();
+                }
+            });
+        }
+
+        // Actualizar puntuación
+        function updateScore() {
+            score++;
+            scoreDisplay.innerHTML = 'Puntuación: ' + score;
+            gameSpeedDisplay.innerHTML = 'Velocidad: ' + speed + 'x';
+            if (score % 10 === 0) {
+                speed += 0.5;
+            }
+        }
+
+        // Fin del juego
+        function gameOver() {
+            clearInterval(obstacleGenerationInterval);
+            clearInterval(gameInterval);
+            gameOverText.classList.add('show-text');
+            restartButton.style.display = 'block';
+            backToMenuButton.style.display = 'block';
+        }
+
+        // Reiniciar juego
+        function restartGame() {
+            score = 0;
+            speed = 2;
+            gameOverText.classList.remove('show-text');
+            restartButton.style.display = 'none';
+            backToMenuButton.style.display = 'none';
+            obstacles.forEach(obstacle => gameContainer.removeChild(obstacle));
+            obstacles = [];
+            startGame();
+        }
+
+        // Volver al menú
+        function backToMenu() {
+            menu.style.display = 'block';
+            gameContainer.style.display = 'none';
+            restartButton.style.display = 'none';
+            backToMenuButton.style.display = 'none';
+            gameOverText.classList.remove('show-text');
+            startText.classList.remove('show-text');
+            obstacles.forEach(obstacle => gameContainer.removeChild(obstacle));
+            obstacles = [];
+        }
+
+        // Iniciar el juego
+        function startGame() {
+            score = 0;
+            speed = 2;
+            gameOverText.classList.remove('show-text');
+            menu.style.display = 'none';
+            gameContainer.style.display = 'block';
+            startText.classList.add('show-text');
+            player.style.left = gameContainer.offsetWidth / 2 - 25 + 'px';
+            playerX = gameContainer.offsetWidth / 2 - 25;
+
+            // Generar obstáculos a intervalos aleatorios
+            obstacleGenerationInterval = setInterval(() => {
+                createObstacles();
+                updateScore();
+                checkCollisions();
+            }, Math.random() * 1500 + 1000);  // Obstáculos caen en tiempos aleatorios
+
+            // Mover obstáculos
+            gameInterval = setInterval(() => {
+                obstacles.forEach(obstacle => {
+                    obstacle.style.top = parseFloat(obstacle.style.top) + speed + 'px';
+                    if (parseFloat(obstacle.style.top) > gameContainer.offsetHeight) {
+                        gameContainer.removeChild(obstacle);
+                        obstacles = obstacles.filter(ob => ob !== obstacle);
+                    }
+                });
+            }, 20);
+        }
+
+        // Mostrar instrucciones
+        function showInstructions() {
+            menu.style.display = 'none';
+            instructionsContainer.style.display = 'block';
+        }
+
+        // Ocultar instrucciones y volver al menú
+        function hideInstructions() {
+            instructionsContainer.style.display = 'none';
+            menu.style.display = 'block';
+        }
+
+        // Eventos de teclas
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') movingLeft = true;
+            if (e.key === 'ArrowRight') movingRight = true;
+            if (e.key !== 'Enter') startText.classList.remove('show-text'); // Desaparece el texto de inicio
+            if (e.key === 'Enter' && !gameInterval) startGame();
+            if (e.key === 'Escape') backToMenu(); // Vuelve al menú si presionas Escape
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') movingLeft = false;
+            if (e.key === 'ArrowRight') movingRight = false;
+        });
+
+        // Mover al jugador
+        setInterval(() => {
+            movePlayer();
+        }, 20);
+    </script>
+
+</body>
+
+</html>
